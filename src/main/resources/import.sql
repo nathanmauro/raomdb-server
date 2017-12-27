@@ -1,0 +1,1 @@
+INSERT INTO movie_list (name) VALUES ('default');
