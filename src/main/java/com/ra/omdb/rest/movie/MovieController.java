@@ -1,37 +1,27 @@
 package com.ra.omdb.rest.movie;
 
-import com.ra.omdb.data.movie.Movie;
-import com.ra.omdb.data.movie.MovieRepository;
+import com.ra.omdb.service.MovieService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(value = "/rest/movie", produces = "application/json")
 public class MovieController {
 
     @Autowired
-    MovieRepository movieRepository;
+    MovieService movieService;
 
     @RequestMapping(value = "/{imdbId}", method = RequestMethod.GET)
     public MovieVo getOne(@PathVariable String imdbId) {
-        Movie movie = this.movieRepository.getOne(imdbId);
-
-        return this.entityToVo(movie);
-    }
-
-    private MovieVo entityToVo(Movie movie) {
-        MovieVo vo = new MovieVo();
-        vo.setImdbId(movie.getImdbId());
-        vo.setListName(movie.getListName());
-        vo.setName(movie.getName());
-        vo.setRating(movie.getRating());
-        return vo;
+        return this.movieService.getOne(imdbId);
     }
 
     @RequestMapping(method = RequestMethod.PUT, consumes = "application/json")
-    public MovieVo save(@RequestBody Movie movie) {
-        this.movieRepository.save(movie);
-
-        return this.entityToVo(movie);
+    public MovieVo save(@RequestBody MovieVo vo) {
+        return this.movieService.entityToVo(this.movieService.voToEntity(vo));
     }
 }
