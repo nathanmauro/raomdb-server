@@ -3,17 +3,15 @@ package com.ra.omdb.data.movie;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.IdClass;
 import javax.persistence.Table;
 
 @Entity
 @Table(name = "movie")
 public class Movie {
     @Id
-    @Column(name = "imdb_id", nullable = false)
+    @Column(name = "imdb_id")
     private String imdbId;
-
-    @Column(name = "list_name")
-    private String listName;
 
     @Column(name = "name")
     private String name;
@@ -27,14 +25,6 @@ public class Movie {
 
     public void setImdbId(String imdbId) {
         this.imdbId = imdbId;
-    }
-
-    public String getListName() {
-        return listName;
-    }
-
-    public void setListName(String listName) {
-        this.listName = listName;
     }
 
     public String getName() {
