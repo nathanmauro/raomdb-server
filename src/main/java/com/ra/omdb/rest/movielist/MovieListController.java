@@ -8,11 +8,7 @@ import com.ra.omdb.data.movielist.MovieListRepository;
 import com.ra.omdb.rest.movie.MovieVo;
 import com.ra.omdb.service.MovieService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -64,7 +60,7 @@ public class MovieListController {
     @RequestMapping(value = "/create/{listName}", method = RequestMethod.POST)
     public List<MovieListVo> create(@PathVariable String listName) {
         MovieList newMovieList = new MovieList();
-        newMovieList.setId(new MovieListPk(listName, null));
+        newMovieList.setId(new MovieListPk(listName, "blank"));
         this.movieListRepository.save(newMovieList);
 
         return this.getMovieListVos();

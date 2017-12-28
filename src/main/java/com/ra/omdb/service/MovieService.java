@@ -18,10 +18,19 @@ public class MovieService {
     }
 
     public Movie voToEntity(MovieVo vo) {
-        Movie movie = new Movie();
+        Movie movie;
+        Movie existingMovie = this.movieRepository.findOne(vo.getImdbId());
+
+        if (existingMovie == null) {
+            movie = new Movie();
+            movie.setRating(vo.getRating());
+        } else {
+            movie = existingMovie;
+            movie.setRating(vo.getRating() == null ? movie.getRating() : vo.getRating());
+        }
+
         movie.setImdbId(vo.getImdbId());
         movie.setName(vo.getName());
-        movie.setRating(vo.getRating());
         this.movieRepository.save(movie);
 
         return movie;
@@ -34,5 +43,4 @@ public class MovieService {
         vo.setRating(movie.getRating());
         return vo;
     }
-
 }
