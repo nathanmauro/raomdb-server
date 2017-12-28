@@ -3,13 +3,18 @@ package com.ra.omdb.rest.movielist;
 import com.ra.omdb.data.movie.Movie;
 import com.ra.omdb.data.movie.MovieRepository;
 import com.ra.omdb.data.movielist.MovieList;
+import com.ra.omdb.data.movielist.MovieListPk;
 import com.ra.omdb.data.movielist.MovieListRepository;
 import com.ra.omdb.rest.movie.MovieVo;
+import com.ra.omdb.service.MovieService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(value = "/rest/movielist", produces = "application/json")
@@ -21,16 +26,18 @@ public class MovieListController {
     @Autowired
     MovieListRepository movieListRepository;
 
-    @RequestMapping(method = RequestMethod.GET)
-    public List<MovieListVo> getAll() {
-        List<MovieList> movieLists = this.movieListRepository.findAll();
+    @Autowired
+    MovieService movieService;
 
-        List<MovieListVo> movieListVos = new ArrayList<>(movieLists.size());
+    @RequestMapping(method = RequestMethod.GET)
+    public Set<MovieListVo> getAll() {
+        Set<MovieList> movieLists = new HashSet<>(this.movieListRepository.findAll());
+
+        Set<MovieListVo> movieListVos = new HashSet<>(movieLists.size());
         movieLists.forEach(movieList -> {
-            MovieListVo movieListVo = new MovieListVo(movieList.getName());
-            List<Movie> movies = this.movieRepository.findAllByListName(movieList.getName());
-            List<MovieVo> movieVos = new ArrayList<>(movies.size());
-            this.movieEntityToMovieVoList(movies, movieVos);
+            MovieListVo movieListVo = new MovieListVo(movieList.getId().getName());
+
+            List<MovieVo> movieVos = getMovieVos(movieList.getId().getName());
             movieListVo.setMovies(movieVos);
             movieListVos.add(movieListVo);
         });
@@ -40,12 +47,9 @@ public class MovieListController {
 
     @RequestMapping(value = "/{listName}", method = RequestMethod.GET)
     public MovieListVo getOne(@PathVariable String listName) {
-        MovieList movieList = this.movieListRepository.getOne(listName);
-        MovieListVo movieListVo = new MovieListVo(movieList.getName());
+        MovieListVo movieListVo = new MovieListVo(listName);
 
-        List<Movie> movies = this.movieRepository.findAllByListName(listName);
-        List<MovieVo> movieVos = new ArrayList<>(movies.size());
-        this.movieEntityToMovieVoList(movies, movieVos);
+        List<MovieVo> movieVos = this.getMovieVos(listName);
 
         movieListVo.setMovies(movieVos);
 
@@ -53,49 +57,52 @@ public class MovieListController {
     }
 
 
-    @RequestMapping(value = "/create", method = RequestMethod.POST, consumes = "application/json")
-    public List<MovieListVo> create(@RequestBody MovieList movieList) {
+    @RequestMapping(value = "/create/{listName}", method = RequestMethod.POST)
+    public List<MovieListVo> create(@PathVariable String listName) {
         MovieList newMovieList = new MovieList();
-        newMovieList.setName(movieList.getName());
+        newMovieList.setId(new MovieListPk(listName, "blank"));
         this.movieListRepository.save(newMovieList);
 
-        List<MovieList> listOfMovies = this.movieListRepository.findAll();
-
-        List<MovieListVo> movieListVos = new ArrayList<>(listOfMovies.size());
-        listOfMovies.forEach(m -> movieListVos.add(new MovieListVo(m.getName())));
-
-        return movieListVos;
+        return this.getMovieListVos();
     }
 
-    @RequestMapping(value = "/add", method = RequestMethod.POST, consumes = "application/json")
-    public List<MovieVo> addToMovieList(@RequestBody MovieVo movieVo) {
-        Movie movie = new Movie();
-        movie.setImdbId(movieVo.getImdbId());
-        movie.setListName(movieVo.getListName());
-        movie.setName(movieVo.getName());
-        movie.setRating(movieVo.getRating());
+    @RequestMapping(value = "/{listName}", method = RequestMethod.POST, consumes = "application/json")
+    public List<MovieVo> addToMovieList(@PathVariable("listName") String listName, @RequestBody MovieVo movieVo) {
+        this.movieService.voToEntity(movieVo);
 
-        this.movieRepository.save(movie);
+        MovieList movieList = this.movieListRepository.findById(new MovieListPk(listName, movieVo.getImdbId()));
 
-        List<Movie> movies = this.movieRepository.findAllByListName(movieVo.getListName());
+        if (movieList == null) {
+            movieList = new MovieList(new MovieListPk(listName, movieVo.getImdbId()));
+        }
 
-        List<MovieVo> movieVos = new ArrayList<>(movies.size());
-        this.movieEntityToMovieVoList(movies, movieVos);
+        this.movieListRepository.save(movieList);
 
-        return movieVos;
+        return this.getMovieVos(listName);
     }
 
     // region private methods
 
+    private List<MovieListVo> getMovieListVos() {
+        List<MovieList> listOfMovies = this.movieListRepository.findAll();
+        List<MovieListVo> movieListVos = new ArrayList<>(listOfMovies.size());
+        listOfMovies.forEach(m -> movieListVos.add(new MovieListVo(m.getId().getName())));
+
+        return movieListVos;
+    }
+
+    private List<MovieVo> getMovieVos(String listName) {
+        List<MovieList> movieListList = this.movieListRepository.findAllByName(listName);
+        List<String> movieListListImdbIds = movieListList.stream().map(ml -> ml.getId().getImdbId()).collect(Collectors.toList());
+        List<Movie> movies = this.movieRepository.findAllByImdbIdIn(movieListListImdbIds);
+
+        List<MovieVo> movieVos = new ArrayList<>(movies.size());
+        this.movieEntityToMovieVoList(movies, movieVos);
+        return movieVos;
+    }
+
     private void movieEntityToMovieVoList(List<Movie> movies, List<MovieVo> movieVos) {
-        movies.forEach(m -> {
-            MovieVo vo = new MovieVo();
-            vo.setImdbId(m.getImdbId());
-            vo.setListName(m.getListName());
-            vo.setName(m.getName());
-            vo.setRating(m.getRating());
-            movieVos.add(vo);
-        });
+        movies.forEach(movie -> movieVos.add(this.movieService.entityToVo(movie)));
     }
 
     // endregion private methods
